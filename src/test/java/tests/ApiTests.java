@@ -49,4 +49,23 @@ public class ApiTests {
                 .then()
                 .body("data.email",equalTo("janet.weaver@reqres.in"));
     }
+
+    @Test
+    void createUser() {
+        //Описываем тело запроса
+        String requestBody = "{\"name\":\"morpheus\",\"job\":\"leader\"}";
+
+        //Выполняем post-запрос
+        given()
+                .log().all() // логируем весь запрос для проверки
+                .header("Content-Type", "application/json") // указываем, что отправляем json
+                .body(requestBody) // проверяем тело запроса
+                .when()
+                .post("https://reqres.in/api/users") // выполняем post запрос
+                .then()
+                .log().all() // логируем весь ответ для анализа
+                .statusCode(201) // Проверяем, что статус-код равен 201 (Created)
+                .body("name",equalTo("morpheus")) // Проверяем, что в ответе есть имя "morpheus"
+                .body("job", equalTo("leader"));
+    }
 }
