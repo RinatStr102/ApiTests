@@ -23,6 +23,21 @@ public class ApiTests {
     }
 
     @Test
+    void checkUsersPage1() {
+        // Step 1: Описываем начальные условия (Given)
+        given()
+                .log().all() // логируем всё,что отправялется в запросе
+        // Step 2: Выполняем Get-запрос (When)
+                .when()
+                .get("https://reqres.in/api/users?page=1")// выполняем запрос к первому ресурсу API
+        // Step 3: Проверяем результат (Then)
+                .then()
+                .log().all() // логируем всё, что вернулось в ответе
+                .statusCode(200) // Проверяем, что статус-код ответа — 200
+                .body("page", equalTo(1)); // Убедимся, что это действительно первая страница
+    }
+
+    @Test
     void checkUserData() {
         // Step 1: Описываем начальные условия
         given()
@@ -53,7 +68,7 @@ public class ApiTests {
     @Test
     void createUser() {
         //Описываем тело запроса
-        String requestBody = "{\"name\":\"morpheus\",\"job\":\"leader\"}";
+        String requestBody = "{\"name\":\"Ринат\",\"job\":\"QA\"}";
 
         //Выполняем post-запрос
         given()
@@ -65,7 +80,25 @@ public class ApiTests {
                 .then()
                 .log().all() // логируем весь ответ для анализа
                 .statusCode(201) // Проверяем, что статус-код равен 201 (Created)
-                .body("name",equalTo("morpheus")) // Проверяем, что в ответе есть имя "morpheus"
-                .body("job", equalTo("leader"));
+                .body("name",equalTo("Ринат")) // Проверяем, что в ответе есть имя "morpheus"
+                .body("job", equalTo("QA"));
+    }
+
+    @Test
+    void updateUsers() {
+        String requestBody = "{\"name\":\"Ринат\",\"job\":\"Automation Engineer\"}";
+        // Step 2: Выполняем PUT-запрос
+        given()
+                .log().all()
+                .header("Content-Type", "application/json")
+                .body(requestBody)
+                .when()
+                .put("https://reqres.in/api/users/2")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("name", equalTo("Ринат"))
+                .body("job", equalTo("Automation Engineer"));
+
     }
 }
