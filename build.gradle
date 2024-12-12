@@ -13,6 +13,11 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation "io.rest-assured:rest-assured:5.1.0"
+    compileOnly 'org.projectlombok:lombok:1.18.26' // Добавляем Lombok
+    annotationProcessor 'org.projectlombok:lombok:1.18.26' // Аннотации Lombok
+    testCompileOnly 'org.projectlombok:lombok:1.18.26' // Lombok для тестов
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.26' // Аннотации для тестов
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
 }
 
 test {

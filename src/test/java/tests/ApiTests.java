@@ -1,5 +1,6 @@
 package tests;
 
+import models.UsersResponse;
 import org.junit.jupiter.api.Test;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
@@ -99,6 +100,58 @@ public class ApiTests {
                 .statusCode(200)
                 .body("name", equalTo("Ринат"))
                 .body("job", equalTo("Automation Engineer"));
+
+    }
+
+    @Test
+    void updateUserJob() {
+        // тело запроса для обновления только поля "job"
+        String requestBody = "{\"job\":\"Senior QA Engineer\"}";
+
+        //Step 1: Выполняем PATCH-запрос
+        given()
+                .log().all()
+                .header("Content-Type", "application/json") // Указываем тип данных JSON
+                .body(requestBody) // Передаём тело запроса с обновлением поля "job"
+                .when()
+                .patch("https://reqres.in/api/users/2") // Отправляем PATCH-запрос на обновление пользователя с id=2
+                .then()
+                .log().all() // Логируем ответ
+                .statusCode(200) // Проверяем, что статус-код ответа — 200
+                .body("job", equalTo("Senior QA Engineer")); // Проверяем, что "job" обновилось на "Senior QA Engineer"
+    }
+
+    @Test
+    void deleteUser() {
+        // Step 1: Выполняем DELETE-запрос
+        given()
+                .log().all() // Логируем запрос
+                .when()
+                .delete("https://reqres.in/api/users/2") // Отправляем DELETE-запрос на удаление пользователя с id=2
+                .then()
+                .log().all()
+                .statusCode(204); // Проверяем, что статус-код — 204 (No Content), что означает успешное удаление
+    }
+
+    @Test
+    void parseUsersResponse() {
+        // Выполняем GET-запрос и парсим ответ в модель UsersResponse
+        UsersResponse response = given()
+                .log().all()
+                .when()
+                .get("https://reqres.in/api/users?page=2")
+                .then()
+                .log().all()
+                .statusCode(200) // Проверяем, что статус-код 200
+                .extract().as(UsersResponse.class); // Парсим ответ в объект UsersResponse
+
+        // Проверяем парсинг ответа
+        assert response.getPage() == 2; // Убедимся, что текущая страница — 2
+        assert response.getData().size() > 0; // Убедимся, что список пользователей не пустой
+
+        // Проверяем данные первого пользователя
+        System.out.println("Первый пользователь: " + response.getData().get(0).getFirst_name());
+        assert response.getData().get(0).getEmail().contains("@"); // Убедимся, что email валиден
 
     }
 }
