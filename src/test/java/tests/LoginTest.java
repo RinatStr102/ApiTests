@@ -1,6 +1,10 @@
 package tests;
 
+import io.qameta.allure.Step;
+import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
@@ -9,13 +13,31 @@ import static org.hamcrest.Matchers.notNullValue;
 
 public class LoginTest {
 
-    private String baseUrl = "https://demoqa.com";
+    private final String baseUrl = "https://demoqa.com";
     private String token; // Переменная для хранения токена
     private String userId; // Переменная для хранения userId
+    private final String isbn = "9781449325862"; // ISBN книги для добавления и удаления
+    private RequestSpecification commonSpec; // Общая спецификация
 
-    //Метод для получения токена и userId
+    @BeforeEach
+    @Step("Подготовка токена и спецификаций")
+    void setup() {
+        loginAndGetToken(); // Выполняем логин
+        commonSpec = new RequestSpecBuilder()
+                .setBaseUri(baseUrl)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Authorization", "Bearer " + token)
+                .build(); // Создаем общую спецификацию для запросов
+    }
+
+    @Step("Логин и получение токена")
     void loginAndGetToken() {
-        String requestBody = "{\"userName\": \"IlonMask\", \"password\": \"Password123!\"}";
+        String requestBody = """
+                {
+                    "userName": "IlonMask",
+                    "password": "Password123!"
+                }
+                """;
 
         Response response = given()
                 .baseUri(baseUrl)
@@ -26,7 +48,7 @@ public class LoginTest {
                 .post()
                 .then()
                 .statusCode(200)
-                .body("token",notNullValue()) // Проверяем, что токен не null
+                .body("token", notNullValue()) // Проверяем, что токен не null
                 .body("userId", notNullValue()) // Проверяем, что userId не null
                 .extract().response();
 
@@ -36,49 +58,73 @@ public class LoginTest {
         System.out.println("Token: " + token);
         System.out.println("UserId: " + userId);
     }
-    // успешный логин
-    @Test
-    void successfulLogin() {
-        String requestBody = "{\"userName\": \"IlonMask\", \"password\": \"Password123!\"}";
 
-        // Отправим POST-запрос
-        given()
-                .baseUri("https://demoqa.com")
-                .basePath("/Account/v1/Login")
-                .header("Content-Type", "application/json")
+    @Step("Добавление книги с ISBN: {isbn} в профиль пользователя")
+    void addBookToUserProfile(String isbn) {
+        String requestBody = """
+            {
+                "userId": "%s",
+                "collectionOfIsbns": [
+                    { "isbn": "%s" }
+                ]
+            }
+            """.formatted(userId, isbn);
+
+        System.out.println("Request Body for Adding Book: " + requestBody);
+
+        Response response = given()
+                .spec(commonSpec)
+                .basePath("/BookStore/v1/Books")
                 .body(requestBody)
                 .when()
-                .post()
-                .then()
-                .statusCode(200) // ожидаем статус 200 OK
-                .body("token", notNullValue()) // проверяем, что токен возвращается
-                .log().all(); // логируем ответ для наглядности
-    }
-    // Добавление книги в профиль пользователя
-    @Test
-    void addBookToUserProfile() {
-        loginAndGetToken(); // Получаем токен и userId перед тестом
+                .post();
 
-        String requestBody = """
+        // Логируем ответ
+        response.then().log().all();
+
+        // Проверяем статус и тело ответа
+        response.then()
+                .statusCode(201)
+                .body("books[0].isbn", equalTo(isbn)); // Проверка ISBN
+    }
+
+    @Step("Удаление книги с ISBN: {isbn} из профиля пользователя")
+    void deleteBookFromUserProfile(String isbn) {
+        String deleteRequestBody = """
                 {
-                      "userId": "%s",
-                      "collectionOfIsbns": [
-                        { "isbn": "9781449325862" }
-                      ]
-                    }
-                    """.formatted(userId);
-        // Выполняем post запрос
+                    "isbn": "%s",
+                    "userId": "%s"
+                }
+                """.formatted(isbn, userId);
+
+        System.out.println("Request Body for Deleting Book: " + deleteRequestBody);
+
         given()
-                .baseUri(baseUrl) // Базовый URL
-                .basePath("/BookStore/v1/Books") // Путь API
-                .header("Content-Type", "application/json") // Указываем тип данных
-                .header("Authorization", "Bearer " + token) // Передаем токен авторизации
-                .body(requestBody) // JSON-запрос
+                .spec(commonSpec)
+                .basePath("/BookStore/v1/Book")
+                .body(deleteRequestBody)
                 .when()
-                .post()// post-запрос
+                .delete()
                 .then()
-                .statusCode(201) //Проверям, что книга добавлена
-                .body("books[0].isbn", equalTo("9781449325862")) // Проверяем ISBN
-                .log().all(); //Логируемм ответ
+                .statusCode(204) // Успешное удаление
+                .log().all();
+    }
+
+    @Test
+    @Step("Тест: добавление и удаление книги")
+    void addAndDeleteBookTest() {
+        addBookToUserProfile(isbn); // Добавляем книгу в профиль
+        deleteBookFromUserProfile(isbn); // Удаляем книгу из профиля
+
+        // Проверяем, что книги больше нет в профиле
+        given()
+                .spec(commonSpec)
+                .basePath("/Account/v1/User/" + userId)
+                .when()
+                .get()
+                .then()
+                .statusCode(200)
+                .body("books.size()", equalTo(0)) // Проверяем, что список книг пустой
+                .log().all();
     }
 }
